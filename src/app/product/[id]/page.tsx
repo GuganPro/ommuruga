@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
         >
           <p className="font-semibold text-primary">{product.category}</p>
           <h1 className="mt-2 font-headline text-4xl font-bold">{product.name}</h1>
-          <p className="mt-4 text-3xl font-bold text-primary">${product.price.toFixed(2)}</p>
+          <p className="mt-4 text-3xl font-bold text-primary">₹{product.price.toFixed(2)}</p>
           <Separator className="my-6" />
           <p className="text-muted-foreground">{product.description}</p>
           <div className="mt-auto flex space-x-4 pt-6">

@@ -63,13 +63,13 @@ export default function CheckoutPage() {
 
   const onSubmit = async (data: CheckoutFormValues) => {
     const orderSummary = cart
-      .map((item) => `${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}`)
+      .map((item) => `${item.name} (x${item.quantity}) - ₹${(item.price * item.quantity).toFixed(2)}`)
       .join('\n');
     const total = getCartTotal();
     const orderDetails = {
       ...data,
       orderId: `ORD-${new Date().getTime()}`,
-      orderSummary: `${orderSummary}\n\nTotal: $${total.toFixed(2)}`,
+      orderSummary: `${orderSummary}\n\nTotal: ₹${total.toFixed(2)}`,
     };
 
     try {
@@ -184,7 +184,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</p>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.id)}>
                             <X className="h-4 w-4" />
                         </Button>
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <p>Total</p>
-                  <p>${getCartTotal().toFixed(2)}</p>
+                  <p>₹{getCartTotal().toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>

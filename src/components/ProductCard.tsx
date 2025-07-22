@@ -43,7 +43,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               {product.description.substring(0, 70)}...
             </CardDescription>
           </Link>
-          <p className="mt-4 font-bold text-primary">${product.price.toFixed(2)}</p>
+          <p className="mt-4 font-bold text-primary">₹{product.price.toFixed(2)}</p>
         </CardContent>
         <CardFooter className="p-4 pt-0">
           <Button className="w-full" onClick={() => addToCart(product)}>
