@@ -22,8 +22,7 @@ const categories = [
 
 export default function Home() {
   const { products } = useContext(AppContext);
-  const featuredProducts = products.slice(0, 4);
-
+  
   return (
     <div className="flex flex-col">
       <motion.section
@@ -63,13 +62,13 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.6 }}
           >
             <Button asChild className="mt-8" size="lg">
-              <Link href="#featured">Shop Now</Link>
+              <Link href="#categories">Shop Now</Link>
             </Button>
           </motion.div>
         </div>
       </motion.section>
 
-      <section className="py-16">
+      <section id="categories" className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="mb-8 text-center font-headline text-3xl font-bold">
             Shop by Category
@@ -109,23 +108,44 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="featured" className="bg-white py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="mb-8 text-center font-headline text-3xl font-bold">
-            Featured Products
-          </h2>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {featuredProducts.map((product: Product, index: number) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </div>
+      <section id="products" className="bg-white py-16">
+        <div className="container mx-auto space-y-16 px-4">
+          {categories.map((category) => {
+            const categoryProducts = products.filter(p => p.category === category.name);
+            if (categoryProducts.length === 0) return null;
+
+            return (
+              <div key={category.name}>
+                <h2 className="mb-8 text-center font-headline text-3xl font-bold">
+                  {category.emoji} {category.name}
+                </h2>
+                <Carousel 
+                  opts={{ align: "start", dragFree: true }}
+                  className="w-full"
+                >
+                  <CarouselContent>
+                    {categoryProducts.map((product, index) => (
+                      <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            className="p-2 h-full"
+                          >
+                            <ProductCard product={product} />
+                          </motion.div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <div className="hidden md:block">
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </div>
+                </Carousel>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>
