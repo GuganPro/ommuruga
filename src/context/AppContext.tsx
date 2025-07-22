@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import type { Product, CartItem } from '@/lib/types';
+import type { Product, CartItem, Order } from '@/lib/types';
 import { DUMMY_PRODUCTS } from '@/lib/dummy-data';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,9 @@ interface AppContextType {
   login: () => void;
   logout: () => void;
   addProduct: (product: Omit<Product, 'id'>) => void;
+  orders: Order[];
+  addOrder: (order: Omit<Order, 'id'>) => void;
+  toggleOrderShipped: (orderId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
@@ -26,6 +29,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -33,17 +37,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Load initial products
     setProducts(DUMMY_PRODUCTS);
 
-    // Load cart from localStorage
+    // Load state from localStorage
     const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
+    if (savedCart) setCart(JSON.parse(savedCart));
     
-    // Check login status from localStorage
     const loggedInStatus = localStorage.getItem('isLoggedIn');
-    if (loggedInStatus === 'true') {
-        setIsLoggedIn(true);
-    }
+    if (loggedInStatus === 'true') setIsLoggedIn(true);
+
+    const savedOrders = localStorage.getItem('orders');
+    if (savedOrders) setOrders(JSON.parse(savedOrders));
 
   }, []);
 
@@ -53,6 +55,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('cart', JSON.stringify(cart));
     }
   }, [cart]);
+
+  useEffect(() => {
+    // Save orders to localStorage whenever it changes
+    if(orders.length > 0 || localStorage.getItem('orders')) {
+        localStorage.setItem('orders', JSON.stringify(orders));
+    }
+  }, [orders]);
 
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prevCart) => {
@@ -111,6 +120,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
     setProducts(prevProducts => [newProduct, ...prevProducts]);
   };
+  
+  const addOrder = (orderData: Omit<Order, 'id'>) => {
+    const newOrder: Order = {
+        ...orderData,
+        id: `ORD-${new Date().getTime()}`,
+    };
+    setOrders(prevOrders => [newOrder, ...prevOrders]);
+  };
+
+  const toggleOrderShipped = (orderId: string) => {
+    setOrders(prevOrders => prevOrders.map(order => 
+        order.id === orderId ? { ...order, shipped: !order.shipped } : order
+    ));
+  };
 
   return (
     <AppContext.Provider
@@ -126,6 +149,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         login,
         logout,
         addProduct,
+        orders,
+        addOrder,
+        toggleOrderShipped,
       }}
     >
       {children}

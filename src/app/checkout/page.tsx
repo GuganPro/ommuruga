@@ -31,7 +31,7 @@ const formSchema = z.object({
 type CheckoutFormValues = z.infer<typeof formSchema>;
 
 export default function CheckoutPage() {
-  const { isLoggedIn, cart, getCartTotal, clearCart, removeFromCart } = useContext(AppContext);
+  const { isLoggedIn, cart, getCartTotal, clearCart, removeFromCart, addOrder } = useContext(AppContext);
   const router = useRouter();
   const { toast } = useToast();
   const [isOrderSuccessful, setIsOrderSuccessful] = useState(false);
@@ -62,19 +62,34 @@ export default function CheckoutPage() {
   });
 
   const onSubmit = async (data: CheckoutFormValues) => {
+    const orderId = `ORD-${new Date().getTime()}`;
     const orderSummary = cart
       .map((item) => `${item.name} (x${item.quantity}) - ₹${(item.price * item.quantity).toFixed(2)}`)
       .join('\n');
     const total = getCartTotal();
-    const orderDetails = {
+    
+    const notificationDetails = {
       ...data,
-      orderId: `ORD-${new Date().getTime()}`,
+      orderId: orderId,
       orderSummary: `${orderSummary}\n\nTotal: ₹${total.toFixed(2)}`,
     };
 
+    const orderDetails = {
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
+        deliveryAddress: data.deliveryAddress,
+        items: cart,
+        total: total,
+        paymentMethod: data.paymentMethod,
+        orderDate: new Date().toISOString(),
+        shipped: false,
+    };
+
     try {
-      const notificationResult = await notifySellerOfOrder(orderDetails);
+      const notificationResult = await notifySellerOfOrder(notificationDetails);
       if (notificationResult.emailSent || notificationResult.whatsAppSent) {
+        addOrder(orderDetails);
         setIsOrderSuccessful(true);
         clearCart();
       } else {

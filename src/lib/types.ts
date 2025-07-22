@@ -20,4 +20,6 @@ export interface Order {
   items: CartItem[];
   total: number;
   paymentMethod: 'COD';
+  orderDate: string;
+  shipped: boolean;
 }
