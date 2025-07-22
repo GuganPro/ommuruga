@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import type { Product } from '@/lib/types';
 import { Button } from './ui/button';
@@ -16,6 +17,13 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
     const { addToCart } = useContext(AppContext);
+    const router = useRouter();
+
+    const handleBuyNow = () => {
+      addToCart(product);
+      router.push('/checkout');
+    };
+
   return (
     <motion.div
       whileHover={{ scale: 1.03, y: -5 }}
@@ -45,9 +53,12 @@ export default function ProductCard({ product }: ProductCardProps) {
           </Link>
           <p className="mt-4 font-bold text-primary">₹{product.price.toFixed(2)}</p>
         </CardContent>
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="flex flex-col items-stretch gap-2 p-4 pt-0">
           <Button className="w-full" onClick={() => addToCart(product)}>
             <ShoppingCart className="mr-2 h-4 w-4" /> Add to Cart
+          </Button>
+          <Button variant="outline" className="w-full" onClick={handleBuyNow}>
+             Buy Now
           </Button>
         </CardFooter>
       </Card>
