@@ -5,23 +5,19 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { AppContext } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tv, Smartphone, Headphones, Home as HomeIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import ProductCard from '@/components/ProductCard';
 import type { Product } from '@/lib/types';
 
-const categoryIcons: { [key: string]: React.ReactElement } = {
-  'TVs and Home Theatres': <Tv className="h-12 w-12 text-primary" />,
-  'Home Appliances': <HomeIcon className="h-12 w-12 text-primary" />,
-  Mobiles: <Smartphone className="h-12 w-12 text-primary" />,
-  Accessories: <Headphones className="h-12 w-12 text-primary" />,
-};
 
 const categories = [
-  'TVs and Home Theatres',
-  'Home Appliances',
-  'Mobiles',
-  'Accessories',
+  { name: 'TVs and Home Theatres', emoji: '📺' },
+  { name: 'Home Appliances', emoji: '🏠' },
+  { name: 'Mobiles', emoji: '📱' },
+  { name: 'Accessories', emoji: '🎧' },
+  { name: 'Laptops', emoji: '💻' },
+  { name: 'Cameras', emoji: '📷' },
 ];
 
 export default function Home() {
@@ -78,30 +74,38 @@ export default function Home() {
           <h2 className="mb-8 text-center font-headline text-3xl font-bold">
             Shop by Category
           </h2>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-              >
-                <Link href={`/products/${encodeURIComponent(category)}`}>
-                  <Card className="h-full cursor-pointer text-center transition-shadow duration-300 hover:shadow-lg">
-                    <CardHeader>
-                      <div className="mx-auto flex items-center justify-center">
-                        {categoryIcons[category]}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardTitle className="font-headline text-lg">{category}</CardTitle>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+              dragFree: true,
+            }}
+            className="w-full"
+          >
+            <CarouselContent>
+              {categories.map((category, index) => (
+                <CarouselItem key={index} className="basis-1/2 md:basis-1/3 lg:basis-1/5">
+                   <motion.div
+                    whileHover={{ scale: 1.05, y: -5 }}
+                    className="p-1"
+                   >
+                    <Link href={`/products/${encodeURIComponent(category.name)}`}>
+                        <Card className="cursor-pointer overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow duration-300 hover:shadow-lg">
+                          <CardContent className="flex aspect-square flex-col items-center justify-center gap-2 p-4 text-center">
+                            <span className="text-4xl">{category.emoji}</span>
+                            <p className="font-semibold text-sm">{category.name}</p>
+                          </CardContent>
+                        </Card>
+                    </Link>
+                   </motion.div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <div className="hidden md:block">
+                <CarouselPrevious />
+                <CarouselNext />
+            </div>
+          </Carousel>
         </div>
       </section>
 
