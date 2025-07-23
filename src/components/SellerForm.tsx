@@ -34,7 +34,7 @@ const categories = [
 
 const formSchema = z.object({
   name: z.string().min(3, 'Product name must be at least 3 characters.'),
-  image: z.any().refine(val => val?.length > 0 || typeof val === 'string', 'Product image is required.'),
+  image: z.string().url('Please enter a valid image URL.'),
   price: z.coerce.number().positive('Price must be a positive number.'),
   description: z.string().min(10, 'Description must be at least 10 characters.'),
   category: z.string().nonempty('Please select a category.'),
@@ -50,7 +50,7 @@ export default function SellerForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      image: undefined,
+      image: '',
       price: 0,
       description: '',
       category: '',
@@ -58,12 +58,7 @@ export default function SellerForm() {
   });
 
   const onSubmit = (data: SellerFormValues) => {
-    // For now, we use a placeholder image as we can't upload files in this environment.
-    const productData = {
-        ...data,
-        image: 'https://placehold.co/600x400',
-    };
-    addProduct(productData);
+    addProduct(data);
     toast({
       title: 'Success!',
       description: `Product "${data.name}" has been added.`,
@@ -92,9 +87,9 @@ export default function SellerForm() {
           name="image"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Image</FormLabel>
+              <FormLabel>Product Image URL</FormLabel>
               <FormControl>
-                <Input type="file" {...form.register('image')} />
+                <Input placeholder="https://example.com/image.png" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
