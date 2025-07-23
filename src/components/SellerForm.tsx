@@ -32,15 +32,33 @@ const categories = [
   'Accessories',
 ];
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
 const formSchema = z.object({
   name: z.string().min(3, 'Product name must be at least 3 characters.'),
-  image: z.string().url('Please enter a valid image URL.'),
+  image: z
+    .any()
+    .refine((files) => files?.length === 1, 'Image is required.')
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      '.jpg, .jpeg, .png and .webp files are accepted.'
+    ),
   price: z.coerce.number().positive('Price must be a positive number.'),
   description: z.string().min(10, 'Description must be at least 10 characters.'),
   category: z.string().nonempty('Please select a category.'),
 });
 
 type SellerFormValues = z.infer<typeof formSchema>;
+
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
 
 export default function SellerForm() {
   const { addProduct } = useContext(AppContext);
@@ -50,21 +68,42 @@ export default function SellerForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      image: '',
       price: 0,
       description: '',
       category: '',
     },
   });
 
-  const onSubmit = (data: SellerFormValues) => {
-    addProduct(data);
-    toast({
-      title: 'Success!',
-      description: `Product "${data.name}" has been added.`,
-    });
-    form.reset();
+  const onSubmit = async (data: SellerFormValues) => {
+    try {
+        const imageBase64 = await toBase64(data.image[0]);
+        const productData = {
+            name: data.name,
+            price: data.price,
+            description: data.description,
+            category: data.category,
+            image: imageBase64,
+        };
+
+        addProduct(productData);
+        toast({
+            title: 'Success!',
+            description: `Product "${data.name}" has been added.`,
+        });
+        form.reset();
+        // Manually clear file input if possible or let the user do it.
+        // For security reasons, browsers don't allow clearing file inputs programmatically.
+    } catch (error) {
+        console.error("Error converting image or adding product:", error);
+        toast({
+            title: 'Error',
+            description: 'Could not process the image. Please try again.',
+            variant: 'destructive',
+        });
+    }
   };
+  
+  const fileRef = form.register('image');
 
   return (
     <Form {...form}>
@@ -87,9 +126,9 @@ export default function SellerForm() {
           name="image"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Image URL</FormLabel>
+              <FormLabel>Product Image</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/image.png" {...field} />
+                <Input type="file" {...fileRef} />
               </FormControl>
               <FormMessage />
             </FormItem>
