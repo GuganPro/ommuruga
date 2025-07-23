@@ -38,8 +38,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                 src={product.image}
                 alt={product.name}
                 data-ai-hint="product image"
-                layout="fill"
-                objectFit="cover"
+                fill
+                className="object-cover"
               />
             </div>
           </CardHeader>

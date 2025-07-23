@@ -34,9 +34,8 @@ export default function Home() {
         <Image
           src="https://placehold.co/1600x900"
           alt="Promotional Banner"
-          layout="fill"
-          objectFit="cover"
-          className="z-0"
+          fill
+          className="z-0 object-cover"
           data-ai-hint="electronics store sale"
         />
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 p-4 text-center">
