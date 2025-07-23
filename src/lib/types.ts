@@ -22,4 +22,5 @@ export interface Order {
   paymentMethod: 'COD';
   orderDate: string;
   shipped: boolean;
+  userId: string | null;
 }

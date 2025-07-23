@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { notifySellerOfOrder } from '@/ai/flows/notify-seller-of-order';
 import Image from 'next/image';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formSchema = z.object({
@@ -31,15 +31,19 @@ const formSchema = z.object({
 type CheckoutFormValues = z.infer<typeof formSchema>;
 
 export default function CheckoutPage() {
-  const { isLoggedIn, cart, getCartTotal, clearCart, removeFromCart, addOrder } = useContext(AppContext);
+  const { isLoggedIn, cart, getCartTotal, clearCart, removeFromCart, addOrder, user, loading } = useContext(AppContext);
   const router = useRouter();
   const { toast } = useToast();
   const [isOrderSuccessful, setIsOrderSuccessful] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!loading && !isLoggedIn) {
       router.push('/login?redirect=/checkout');
     }
+  }, [isLoggedIn, loading, router]);
+  
+  useEffect(() => {
     if (cart.length === 0 && !isOrderSuccessful) {
         toast({
             title: "Your cart is empty",
@@ -48,20 +52,29 @@ export default function CheckoutPage() {
         })
         router.push('/');
     }
-  }, [isLoggedIn, router, cart, toast, isOrderSuccessful]);
+  }, [cart, router, toast, isOrderSuccessful]);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       customerName: '',
-      customerEmail: '',
+      customerEmail: user?.email || '',
       customerPhone: '',
       deliveryAddress: '',
       paymentMethod: 'COD',
     },
   });
 
+  useEffect(() => {
+    if (user) {
+        form.setValue('customerName', user.displayName || '');
+        form.setValue('customerEmail', user.email || '');
+    }
+  }, [user, form]);
+
+
   const onSubmit = async (data: CheckoutFormValues) => {
+    setIsProcessing(true);
     const orderId = `ORD-${new Date().getTime()}`;
     const orderSummary = cart
       .map((item) => `${item.name} (x${item.quantity}) - ₹${(item.price * item.quantity).toFixed(2)}`)
@@ -84,16 +97,17 @@ export default function CheckoutPage() {
         paymentMethod: data.paymentMethod,
         orderDate: new Date().toISOString(),
         shipped: false,
+        userId: user?.uid || null,
     };
 
     try {
       const notificationResult = await notifySellerOfOrder(notificationDetails);
       if (notificationResult.emailSent || notificationResult.whatsAppSent) {
-        addOrder(orderDetails);
+        await addOrder(orderDetails);
         setIsOrderSuccessful(true);
         clearCart();
       } else {
-        throw new Error('Notification failed');
+        throw new Error('Notification to seller failed');
       }
     } catch (error) {
       console.error("Failed to process order:", error);
@@ -102,9 +116,15 @@ export default function CheckoutPage() {
         description: "There was a problem placing your order. Please try again.",
         variant: "destructive",
       });
+    } finally {
+        setIsProcessing(false);
     }
   };
   
+  if (loading) {
+    return <div className="container mx-auto flex h-[70vh] flex-col items-center justify-center p-4 text-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
   if (isOrderSuccessful) {
     return (
         <div className="container mx-auto flex h-[70vh] flex-col items-center justify-center p-4 text-center">
@@ -142,7 +162,7 @@ export default function CheckoutPage() {
                     <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="customerEmail" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} readOnly/></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="customerPhone" control={form.control} render={({ field }) => (
                     <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Your Phone" {...field} /></FormControl><FormMessage /></FormItem>
@@ -163,7 +183,10 @@ export default function CheckoutPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <Button type="submit" className="w-full" size="lg">Place Order</Button>
+                  <Button type="submit" className="w-full" size="lg" disabled={isProcessing}>
+                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isProcessing ? 'Placing Order...' : 'Place Order'}
+                  </Button>
                 </form>
               </Form>
             </CardContent>

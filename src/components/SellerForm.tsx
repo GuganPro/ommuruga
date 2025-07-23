@@ -24,12 +24,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 const categories = [
   'TVs and Home Theatres',
   'Home Appliances',
   'Mobiles',
   'Accessories',
+  'Laptops',
+  'Cameras'
 ];
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -52,16 +55,9 @@ const formSchema = z.object({
 
 type SellerFormValues = z.infer<typeof formSchema>;
 
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 
 export default function SellerForm() {
-  const { addProduct } = useContext(AppContext);
+  const { addProduct, loading } = useContext(AppContext);
   const { toast } = useToast();
 
   const form = useForm<SellerFormValues>({
@@ -76,28 +72,25 @@ export default function SellerForm() {
 
   const onSubmit = async (data: SellerFormValues) => {
     try {
-        const imageBase64 = await toBase64(data.image[0]);
         const productData = {
             name: data.name,
             price: data.price,
             description: data.description,
             category: data.category,
-            image: imageBase64,
+            image: data.image[0] as File,
         };
 
-        addProduct(productData);
-        toast({
-            title: 'Success!',
-            description: `Product "${data.name}" has been added.`,
-        });
+        await addProduct(productData);
         form.reset();
-        // Manually clear file input if possible or let the user do it.
-        // For security reasons, browsers don't allow clearing file inputs programmatically.
+        // Clear file input.
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if(fileInput) fileInput.value = '';
+
     } catch (error) {
-        console.error("Error converting image or adding product:", error);
+        console.error("Error adding product:", error);
         toast({
             title: 'Error',
-            description: 'Could not process the image. Please try again.',
+            description: 'Could not add the product. Please try again.',
             variant: 'destructive',
         });
     }
@@ -115,7 +108,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Product Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Smart LED TV" {...field} />
+                <Input placeholder="e.g., Smart LED TV" {...field} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -128,7 +121,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Product Image</FormLabel>
               <FormControl>
-                <Input type="file" {...fileRef} />
+                <Input type="file" {...fileRef} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -141,7 +134,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Price</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" {...field} />
+                <Input type="number" step="0.01" {...field} disabled={loading}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,7 +147,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe the product..." {...field} />
+                <Textarea placeholder="Describe the product..." {...field} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -166,7 +159,7 @@ export default function SellerForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -184,7 +177,10 @@ export default function SellerForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">Add Product</Button>
+        <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? 'Adding...' : 'Add Product'}
+        </Button>
       </form>
     </Form>
   );
