@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { AppContext } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { generateProductDescription } from '@/ai/flows/generate-product-description';
 
 const categories = [
   'TVs and Home Theatres',
@@ -55,10 +56,11 @@ const formSchema = z.object({
 
 type SellerFormValues = z.infer<typeof formSchema>;
 
-
 export default function SellerForm() {
-  const { addProduct, loading } = useContext(AppContext);
+  const { addProduct } = useContext(AppContext);
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<SellerFormValues>({
     resolver: zodResolver(formSchema),
@@ -69,8 +71,47 @@ export default function SellerForm() {
       category: '',
     },
   });
+  
+  const handleGenerateDescription = async () => {
+    const productName = form.getValues('name');
+    const category = form.getValues('category');
+
+    if (!productName || !category) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please enter a product name and select a category to generate a description.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      const result = await generateProductDescription({ productName, category });
+      if (result.description) {
+        form.setValue('description', result.description, { shouldValidate: true });
+        toast({
+          title: 'Description Generated',
+          description: 'The AI-powered description has been filled in for you.',
+        });
+      } else {
+          throw new Error("AI did not return a description.")
+      }
+    } catch (error) {
+      console.error("Error generating description:", error);
+      toast({
+        title: 'Generation Failed',
+        description: 'Could not generate a description at this time.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   const onSubmit = async (data: SellerFormValues) => {
+    setIsSubmitting(true);
     try {
         const productData = {
             name: data.name,
@@ -93,6 +134,8 @@ export default function SellerForm() {
             description: 'Could not add the product. Please try again.',
             variant: 'destructive',
         });
+    } finally {
+        setIsSubmitting(false);
     }
   };
   
@@ -108,7 +151,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Product Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Smart LED TV" {...field} disabled={loading} />
+                <Input placeholder="e.g., Smart LED TV" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -121,7 +164,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Product Image</FormLabel>
               <FormControl>
-                <Input type="file" {...fileRef} disabled={loading} />
+                <Input type="file" {...fileRef} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -134,20 +177,7 @@ export default function SellerForm() {
             <FormItem>
               <FormLabel>Price</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" {...field} disabled={loading}/>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Describe the product..." {...field} disabled={loading} />
+                <Input type="number" step="0.01" {...field} disabled={isSubmitting}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -159,7 +189,7 @@ export default function SellerForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loading}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -177,9 +207,37 @@ export default function SellerForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Adding...' : 'Add Product'}
+        <div className="space-y-2">
+            <div className="flex justify-between items-center">
+                <FormLabel htmlFor="description">Description</FormLabel>
+                <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleGenerateDescription}
+                    disabled={isGenerating || isSubmitting}
+                >
+                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Generate with AI
+                </Button>
+            </div>
+            <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+                <FormItem className="space-y-0">
+                <FormControl>
+                    <Textarea id="description" placeholder="Describe the product..." {...field} disabled={isSubmitting} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+        
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Adding...' : 'Add Product'}
         </Button>
       </form>
     </Form>

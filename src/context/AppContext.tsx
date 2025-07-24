@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface AppContextType {
@@ -27,6 +27,7 @@ interface AppContextType {
   addOrder: (order: Omit<Order, 'id'>) => Promise<void>;
   toggleOrderShipped: (orderId: string) => void;
   loading: boolean;
+  userOrders: Order[];
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
@@ -37,6 +38,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -63,7 +65,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     
-    const fetchOrders = async () => {
+    const fetchAllOrders = async () => {
         try {
           const ordersCollection = collection(db, 'orders');
           const orderSnapshot = await getDocs(query(ordersCollection, orderBy("orderDate", "desc")));
@@ -76,18 +78,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       };
 
     fetchProducts();
-    fetchOrders();
+    fetchAllOrders(); // For seller panel
 
     const savedCart = localStorage.getItem('cart');
     if (savedCart) setCart(JSON.parse(savedCart));
 
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if(cart.length > 0 || localStorage.getItem('cart')) {
       localStorage.setItem('cart', JSON.stringify(cart));
     }
   }, [cart]);
+
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+        if (user) {
+            try {
+                const ordersCollection = collection(db, 'orders');
+                const q = query(ordersCollection, where("userId", "==", user.uid), orderBy("orderDate", "desc"));
+                const orderSnapshot = await getDocs(q);
+                const orderList = orderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+                setUserOrders(orderList);
+            } catch (error) {
+                console.error("Error fetching user orders:", error);
+                toast({ title: "Error", description: "Could not fetch your orders.", variant: "destructive" });
+            }
+        } else {
+            setUserOrders([]);
+        }
+    }
+    fetchUserOrders();
+  }, [user, toast]);
 
 
   const addToCart = (product: Product, quantity = 1) => {
@@ -139,41 +161,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addProduct = async (productData: Omit<Product, 'id' | 'image'> & { image: File }) => {
-    setLoading(true);
     try {
-      // 1. Upload image to Firebase Storage
       const storageRef = ref(storage, `products/${Date.now()}_${productData.image.name}`);
       const snapshot = await uploadBytes(storageRef, productData.image);
       const imageUrl = await getDownloadURL(snapshot.ref);
 
-      // 2. Add product to Firestore
       const newProductData = {
         ...productData,
         image: imageUrl,
       };
+      
       const docRef = await addDoc(collection(db, "products"), newProductData);
       
-      setProducts(prev => [{...newProductData, id: docRef.id}, ...prev]);
+      setProducts(prev => [{...newProductData, id: docRef.id}, ...prev].sort((a,b) => a.name.localeCompare(b.name)));
+      
       toast({ title: "Success!", description: `Product "${productData.name}" has been added.` });
 
     } catch (error) {
       console.error("Error adding product:", error);
-      toast({ title: "Error", description: "Failed to add product.", variant: "destructive" });
-    } finally {
-        setLoading(false);
+      // Re-throw the error so the form can catch it
+      throw error;
     }
   };
   
   const addOrder = async (orderData: Omit<Order, 'id'>) => {
-    setLoading(true);
     try {
         const docRef = await addDoc(collection(db, "orders"), orderData);
-        setOrders(prev => [{...orderData, id: docRef.id}, ...prev]);
+        const newOrder = {...orderData, id: docRef.id};
+        setOrders(prev => [newOrder, ...prev]);
+        setUserOrders(prev => [newOrder, ...prev]);
     } catch(error) {
         console.error("Error adding order:", error);
         throw error; // re-throw to be caught in checkout page
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -215,7 +234,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         orders,
         addOrder,
         toggleOrderShipped,
-        loading
+        loading,
+        userOrders,
       }}
     >
       {children}
