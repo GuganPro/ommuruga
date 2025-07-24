@@ -6,7 +6,7 @@ import { ShoppingCart, User, Menu, X } from 'lucide-react';
 import { AppContext } from '@/context/AppContext';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
 
 export default function Header() {
@@ -57,6 +57,9 @@ export default function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
                 <div className="flex flex-col gap-6 p-6">
                     <Link href="/" className="font-headline text-2xl font-bold text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                     Om Muruga Online
