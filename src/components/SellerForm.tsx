@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
+import { Progress } from '@/components/ui/progress';
+import { motion } from 'framer-motion';
 
 const categories = [
   'TVs and Home Theatres',
@@ -61,6 +63,8 @@ export default function SellerForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const form = useForm<SellerFormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +75,18 @@ export default function SellerForm() {
       category: '',
     },
   });
+  
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isSubmitting && uploadProgress < 90) {
+      timer = setTimeout(() => {
+        setUploadProgress(prev => prev + 10);
+      }, 500);
+    }
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isSubmitting, uploadProgress]);
   
   const handleGenerateDescription = async () => {
     const productName = form.getValues('name');
@@ -112,6 +128,7 @@ export default function SellerForm() {
 
   const onSubmit = async (data: SellerFormValues) => {
     setIsSubmitting(true);
+    setUploadProgress(10);
     try {
         const productData = {
             name: data.name,
@@ -122,10 +139,19 @@ export default function SellerForm() {
         };
 
         await addProduct(productData);
+        
+        setUploadProgress(100);
+        setShowSuccess(true);
         form.reset();
-        // Clear file input.
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         if(fileInput) fileInput.value = '';
+
+        setTimeout(() => {
+          setShowSuccess(false);
+          setIsSubmitting(false);
+          setUploadProgress(0);
+        }, 3000);
+
 
     } catch (error) {
         console.error("Error adding product:", error);
@@ -134,8 +160,8 @@ export default function SellerForm() {
             description: 'Could not add the product. Please try again.',
             variant: 'destructive',
         });
-    } finally {
         setIsSubmitting(false);
+        setUploadProgress(0);
     }
   };
   
@@ -235,10 +261,29 @@ export default function SellerForm() {
             />
         </div>
         
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? 'Adding...' : 'Add Product'}
-        </Button>
+        {isSubmitting ? (
+          <div className="space-y-4 pt-2">
+            {showSuccess ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-center gap-2 text-center font-medium text-green-600"
+              >
+                <CheckCircle className="h-5 w-5" />
+                <p>Product added successfully!</p>
+              </motion.div>
+            ) : (
+              <div className="w-full space-y-2">
+                 <p className="text-sm font-medium text-muted-foreground">Adding your product...</p>
+                 <Progress value={uploadProgress} className="w-full" />
+              </div>
+            )}
+          </div>
+        ) : (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+                Add Product
+            </Button>
+        )}
       </form>
     </Form>
   );
