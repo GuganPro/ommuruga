@@ -8,6 +8,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { FirebaseError } from 'firebase/app';
 
 interface AppContextType {
   products: Product[];
@@ -161,6 +162,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addProduct = async (productData: Omit<Product, 'id' | 'image'> & { image: File }) => {
+    if (!isLoggedIn) {
+        throw new Error('You must be logged in to add a product.');
+    }
     try {
       const storageRef = ref(storage, `products/${Date.now()}_${productData.image.name}`);
       const snapshot = await uploadBytes(storageRef, productData.image);
@@ -179,6 +183,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     } catch (error) {
       console.error("Error adding product:", error);
+      if (error instanceof FirebaseError) {
+        toast({
+          title: 'Upload Failed',
+          description: `Error: ${error.code} - ${error.message}`,
+          variant: 'destructive',
+        });
+      } else {
+         toast({
+            title: 'An Unknown Error Occurred',
+            description: 'Could not add the product. Please try again.',
+            variant: 'destructive',
+        });
+      }
       // Re-throw the error so the form can catch it
       throw error;
     }
