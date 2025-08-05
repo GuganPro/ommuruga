@@ -2,8 +2,7 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to product images, but only allow authenticated
-    // users to upload them.
+    // Allow public read access to product images
     match /products/{imageId} {
       allow read: if true;
       allow write: if request.auth != null;
