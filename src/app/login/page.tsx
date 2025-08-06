@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, Suspense } from 'react';
 import { AppContext } from '@/context/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ const signupSchema = z.object({
 });
 
 
-export default function AuthPage() {
+function AuthPageContent() {
   const { login, signup, isLoggedIn, user } = useContext(AppContext);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -184,4 +184,3 @@ export default function AuthPage() {
       </motion.div>
     </div>
   );
-}
