@@ -45,6 +45,8 @@
     "framer-motion": "^11.2.10",
     "genkit": "^1.14.1",
     "lucide-react": "^0.475.0",
+    "mongodb": "^6.18.0",
+    "mongoose": "^8.17.1",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
